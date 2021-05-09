@@ -1,0 +1,96 @@
+
+type Query {
+	allLocal(
+		filter: LocalFilterInput
+		limit: Int
+		skip: Int
+		sort: [LocalSortInput]
+	): String
+}
+
+enum TipoLocal {
+  CONTINENTE
+  PAIS
+  PAIS_REGIAO
+  ESTADO
+  ESTADO_MESO
+  ESTADO_MICRO
+  MUNICIPIO
+  DISTRITO
+  BAIRRO
+  LOGRADOURO
+  LOGRADOURO_NUMERO
+  COMPLEMENTO
+}
+
+enum SortOrderEnum {
+	ASC
+	DESC
+}
+
+enum LocalFieldsEnum {
+	ID
+	CREATEDBY
+	CREATEDDATE
+	LASTMODIFIEDBY
+	LASTMODIFIEDDATE
+	TIPO
+	SIGLA
+	NOME
+	CODIGO_POSTAL
+	OBSID
+	DENTRODEID
+}
+
+input StringQueryOperatorInput {
+	eq: String
+	glob: String
+	in: [String]
+	ne: String
+	nin: [String]
+	regex: String
+}
+
+input DateTimeQueryOperatorInput {
+	eq: DateTime
+	ne: DateTime
+	gt: DateTime
+	gte: DateTime
+	lt: DateTime
+	lte: DateTime
+	in: [DateTime]
+	nin: [DateTime]
+}
+
+input LocalFilterInput {
+	id: StringQueryOperatorInput
+	createdBy: StringQueryOperatorInput
+	createdDate: DateTimeQueryOperatorInput
+	lastModifiedBy: StringQueryOperatorInput
+	lastModifiedDate: DateTimeQueryOperatorInput
+	tipo: StringQueryOperatorInput
+	sigla: StringQueryOperatorInput
+	nome: StringQueryOperatorInput
+	codigo_postal: StringQueryOperatorInput
+	obsId: StringQueryOperatorInput
+	dentroDeId: StringQueryOperatorInput
+}
+
+input LocalSortInput {
+	field: LocalFieldsEnum
+	order: SortOrderEnum
+}
+
+type Local {
+	id: ID!
+	createdBy: String
+	createdDate: DateTime
+	lastModifiedBy: String
+	lastModifiedDate: DateTime
+	tipo: TipoLocal!
+	sigla: String
+	nome: String!
+	codigo_postal: String
+	obsId: String
+	dentroDeId: String
+}
