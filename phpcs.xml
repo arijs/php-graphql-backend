@@ -13,4 +13,24 @@
 
     <rule ref="Ramsey"/>
 
+    <!-- Forbid a bunch of functions -->
+    <rule ref="Generic.PHP.ForbiddenFunctions">
+        <properties>
+            <property name="forbiddenFunctions" type="array">
+                <!-- Forbid some alias functions for scalars -->
+                <element key="doubleval" value="floatval"/>
+                <element key="is_double" value="is_float"/>
+                <element key="is_integer" value="is_int"/>
+                <element key="is_long" value="is_int"/>
+                <element key="is_real" value="is_float"/>
+                <!-- Forbid remaining debug functions in the code -->
+                <element key="d" value="null"/>
+                <element key="dd" value="null"/>
+                <element key="dump" value="null"/>
+                <element key="dump_d" value="null"/>
+                <element key="var_dump" value="null"/>
+            </property>
+        </properties>
+    </rule>
+
 </ruleset>
