@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Util\Dsn;
 use RedBeanPHP\R;
 use Siler\GraphQL\DateTimeScalar;
-use App\Util\Dsn;
 
 use function Siler\Config\config;
 
@@ -16,7 +16,8 @@ R::setup(
     $db['password'],
 );
 
-function fnCreateResolver($tableName) {
+function fnCreateResolver($tableName)
+{
     return function ($root, $args) use ($tableName) {
         $input = $args['input'];
         $object = R::load($tableName, 0);
@@ -24,14 +25,19 @@ function fnCreateResolver($tableName) {
             $object[$ik] = $iv;
         }
         R::store($object);
+
         return $object;
     };
 }
-function filterString($field, $filter) {
-    if (empty($filter)) return [
-        'search' => '',
-        'bindings' => [],
-    ];
+
+function filterString($field, $filter)
+{
+    if (empty($filter)) {
+        return [
+            'search' => '',
+            'bindings' => [],
+        ];
+    }
     $search = [];
     $bindings = [];
     if (array_key_exists($filter, 'eq')) {
@@ -70,12 +76,15 @@ function filterString($field, $filter) {
         $search[] = "{$field} NOT REGEXP ?";
         $bindings[] = $filter['nregex'];
     }
+
     return [
         'search' => $search,
         'bindings' => $bindings,
     ];
 }
-function filterID($field, $filter) {
+
+function filterID($field, $filter)
+{
     return is_null($filter)
         ? [
             'search' => [],
@@ -86,7 +95,9 @@ function filterID($field, $filter) {
             'bindings' => [$filter],
         ];
 }
-function filterInput($map, $filter) {
+
+function filterInput($map, $filter)
+{
     $search = [];
     $bindings = [];
     if (empty($filter)) {
@@ -118,7 +129,7 @@ function filterInput($map, $filter) {
             echo '{"die":1.15,"error": "type is not callable", ';
             echo "\"field\": \"{$field}\", ";
             echo "\"type\": \"{$type}\", ";
-            echo '"times": '.$i.', "obj":';
+            echo '"times": ' . $i . ', "obj":';
             echo json_encode(var_export($map, true));
             echo '}';
             die;
@@ -145,6 +156,7 @@ function filterInput($map, $filter) {
         $search = array_merge($search, array_values($combine['search']));
         $bindings = array_merge($bindings, array_values($combine['bindings']));
     }
+
     // echo '{"die":2,"error": "created filter", "times": '.$i.', ';
     // echo '"search": '.json_encode($search).', ';
     // echo '"bindings": '.json_encode($bindings).' ';
@@ -155,7 +167,9 @@ function filterInput($map, $filter) {
         'bindings' => $bindings,
     ];
 }
-function fnCreateAll($tableName, $filterInputMap) {
+
+function fnCreateAll($tableName, $filterInputMap)
+{
     return static function ($root, $args) use ($tableName, $filterInputMap) {
         $search = [];
         $bindings = [];
@@ -176,6 +190,7 @@ function fnCreateAll($tableName, $filterInputMap) {
             $search = $filter['search'];
             $bindings = $filter['bindings'];
         }
+
         return R::find($tableName, implode(' AND ', $search), $bindings);
     };
 }

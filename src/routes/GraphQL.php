@@ -10,6 +10,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Siler\Diactoros;
 use Siler\Encoder\Json;
 use Siler\GraphQL as SGraphQL;
+use Throwable;
 
 use function array_key_exists;
 use function is_array;
@@ -35,11 +36,11 @@ class GraphQL
         // if (!array_key_exists('variables', $body))
         //  return Diactoros\json('"variables" not found on request', 400);
 
-        $schema = include __DIR__ . '/../graphql/schema.php';
+        $schema = include __DIR__ . '/../GraphQL/schema.php';
 
         try {
             $data = SGraphQL\execute($schema, $body);
-        } catch (\Exception $e) {
+        } catch (Throwable $e) {
             $data = $e->getMessage();
         }
 
