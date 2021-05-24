@@ -6,21 +6,17 @@ type Query {
 		skip: Int
 		sort: [LocalSortInput]
 	): [Local!]!
+	allTipoLocal(
+		filter: TipoLocalFilterInput
+		limit: Int
+		skip: Int
+		sort: [TipoLocalSortInput]
+	): [TipoLocal!]!
 }
 
-enum TipoLocal {
-  CONTINENTE
-  PAIS
-  PAIS_REGIAO
-  ESTADO
-  ESTADO_MESO
-  ESTADO_MICRO
-  MUNICIPIO
-  DISTRITO
-  BAIRRO
-  LOGRADOURO
-  LOGRADOURO_NUMERO
-  COMPLEMENTO
+type Mutation {
+	createLocal(input: LocalCreateInput): Local!
+	createTipoLocal(input: TipoLocalCreateInput): TipoLocal!
 }
 
 enum SortOrderEnum {
@@ -28,30 +24,18 @@ enum SortOrderEnum {
 	DESC
 }
 
-enum LocalFieldsEnum {
-	ID
-	CREATEDBY
-	CREATEDDATE
-	LASTMODIFIEDBY
-	LASTMODIFIEDDATE
-	TIPO
-	SIGLA
-	NOME
-	CODIGO_POSTAL
-	OBSID
-	DENTRODEID
-}
-
-input StringQueryOperatorInput {
+input StringFilterInput {
 	eq: String
-	glob: String
-	in: [String]
 	ne: String
+	in: [String]
 	nin: [String]
+	like: String
+	unlike: String
 	regex: String
+	nregex: String
 }
 
-input DateTimeQueryOperatorInput {
+input DateTimeFilterInput {
 	eq: DateTime
 	ne: DateTime
 	gt: DateTime
@@ -62,42 +46,112 @@ input DateTimeQueryOperatorInput {
 	nin: [DateTime]
 }
 
-input LocalTipoFilterInput {
-	eq: TipoLocal
-	ne: TipoLocal
-	in: [TipoLocal]
-	nin: [TipoLocal]
+input IntFilterInput {
+	eq: Int
+	ne: Int
+	gt: Int
+	gte: Int
+	lt: Int
+	lte: Int
+	in: [Int]
+	nin: [Int]
+}
+
+input FloatFilterInput {
+	eq: Float
+	ne: Float
+	gt: Float
+	gte: Float
+	lt: Float
+	lte: Float
+	in: [Float]
+	nin: [Float]
+}
+
+# TipoLocal
+
+type TipoLocal {
+	id: ID!
+	nome: String!
+}
+
+enum TipoLocalFieldsEnum {
+	ID
+	NOME
+}
+
+input TipoLocalFilterInput {
+	id: ID
+	nome: StringFilterInput
+}
+
+input TipoLocalCreateInput {
+	nome: String!
+}
+
+input TipoLocalSortInput {
+	field: TipoLocalFieldsEnum
+	order: SortOrderEnum
+}
+
+# Local
+
+type Local {
+	id: ID!
+	sigla: String
+	nome: String!
+	codigo_postal: String
+	# codigo_telefone: String
+	id_dentro_de: ID
+	dentro_de: Local
+	id_tipo: ID!
+	tipo: TipoLocal!
+	# latCenter: Float
+	# latLength: Float
+	# lngCenter: Float
+	# lngLength: Float
+	# ibge: String
+	# gia: String
+	# ddd: String
+	# siafi: String
+}
+
+enum LocalFieldsEnum {
+	ID
+	SIGLA
+	NOME
+	CODIGO_POSTAL
+	ID_DENTRO_DE
+	ID_TIPO
 }
 
 input LocalFilterInput {
-	id: StringQueryOperatorInput
-	createdBy: StringQueryOperatorInput
-	createdDate: DateTimeQueryOperatorInput
-	lastModifiedBy: StringQueryOperatorInput
-	lastModifiedDate: DateTimeQueryOperatorInput
-	tipo: LocalTipoFilterInput
-	sigla: StringQueryOperatorInput
-	nome: StringQueryOperatorInput
-	codigo_postal: StringQueryOperatorInput
-	obsId: StringQueryOperatorInput
-	dentroDeId: StringQueryOperatorInput
+	id: StringFilterInput
+	sigla: StringFilterInput
+	nome: StringFilterInput
+	codigo_postal: StringFilterInput
+	# obsId: StringFilterInput
+	id_dentro_de: StringFilterInput
+	dentro_de: LocalFilterInput
+	dentro_de_recursive: LocalFilterInputRecursive
+	tipo: TipoLocalFilterInput
+}
+
+input LocalCreateInput {
+	sigla: String
+	nome: String!
+	codigo_postal: String
+	id_dentro_de: ID
+	id_tipo: ID!
+}
+
+input LocalFilterInputRecursive {
+	local: LocalFilterInput!
+	minDist: Int
+	maxDist: Int
 }
 
 input LocalSortInput {
 	field: LocalFieldsEnum
 	order: SortOrderEnum
-}
-
-type Local {
-	id: ID!
-	createdBy: String
-	createdDate: DateTime
-	lastModifiedBy: String
-	lastModifiedDate: DateTime
-	tipo: TipoLocal!
-	sigla: String
-	nome: String!
-	codigo_postal: String
-	obsId: String
-	dentroDeId: String
 }

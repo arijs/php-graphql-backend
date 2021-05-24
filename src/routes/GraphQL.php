@@ -37,7 +37,11 @@ class GraphQL
 
         $schema = include __DIR__ . '/../graphql/schema.php';
 
-        $data = SGraphQL\execute($schema, $body);
+        try {
+            $data = SGraphQL\execute($schema, $body);
+        } catch (\Exception $e) {
+            $data = $e->getMessage();
+        }
 
         return Cors::inject(Diactoros\json($data));
     }
