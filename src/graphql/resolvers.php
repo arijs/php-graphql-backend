@@ -40,42 +40,56 @@ function filterString($field, $filter)
     }
     $search = [];
     $bindings = [];
-    if (array_key_exists($filter, 'eq')) {
+    // echo '{"die":3,"error": "string filter init"';
+    // echo ', "field": '.json_encode($field);
+    // echo ', "filter": '.json_encode(var_export($filter, true));
+    // echo '}';
+    // die;
+    if (array_key_exists('eq', $filter)) {
         $search[] = "{$field} = ?";
         $bindings[] = $filter['eq'];
     }
-    if (array_key_exists($filter, 'ne')) {
+    if (array_key_exists('ne', $filter)) {
         $search[] = "{$field} != ?";
         $bindings[] = $filter['ne'];
     }
-    if (array_key_exists($filter, 'in')) {
+    if (array_key_exists('in', $filter)) {
         $in = $filter['in'];
         $ins = R::genSlots($in);
-        $search[] = "{$field} IN {$ins}";
+        $search[] = "{$field} IN ({$ins})";
         $bindings = array_merge($bindings, array_values($in));
     }
-    if (array_key_exists($filter, 'nin')) {
+    if (array_key_exists('nin', $filter)) {
         $nin = $filter['nin'];
-        $nins = R::genSlots($in);
-        $search[] = "{$field} NOT IN {$ins}";
-        $bindings = array_merge($bindings, array_values($in));
+        $nins = R::genSlots($nin);
+        $search[] = "{$field} NOT IN ({$nins})";
+        $bindings = array_merge($bindings, array_values($nin));
     }
-    if (array_key_exists($filter, 'like')) {
+    if (array_key_exists('like', $filter)) {
         $search[] = "{$field} LIKE ?";
         $bindings[] = $filter['like'];
     }
-    if (array_key_exists($filter, 'unlike')) {
+    if (array_key_exists('unlike', $filter)) {
         $search[] = "{$field} NOT LIKE ?";
-        $bindings[] = $filter['like'];
+        $bindings[] = $filter['unlike'];
     }
-    if (array_key_exists($filter, 'regex')) {
+    if (array_key_exists('regex', $filter)) {
         $search[] = "{$field} REGEXP ?";
         $bindings[] = $filter['regex'];
     }
-    if (array_key_exists($filter, 'nregex')) {
+    if (array_key_exists('nregex', $filter)) {
         $search[] = "{$field} NOT REGEXP ?";
         $bindings[] = $filter['nregex'];
     }
+    // echo '{"die":4,"error": "string filter end"';
+    // echo ', "field": '.json_encode($field);
+    // echo ', "filter": '.json_encode($filter);
+    // echo ', "search": '.json_encode($search);
+    // echo ', "bindings": '.json_encode($bindings);
+    // // echo ', "in": '.json_encode($nin);
+    // // echo ', "ins": '.json_encode($nins);
+    // echo '}';
+    // die;
 
     return [
         'search' => $search,
@@ -110,7 +124,7 @@ function filterInput($map, $filter)
     }
     $i = 0;
     foreach ($map as $field => $type) {
-        // if ($i > 1) {
+        // if ($i >= 0) {
         //     echo '{"die":1.125,"error": "first filter from map", ';
         //     echo "\"field\": \"{$field}\", ";
         //     echo "\"type\": \"{$type}\", ";
