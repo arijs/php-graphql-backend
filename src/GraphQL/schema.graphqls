@@ -4,13 +4,13 @@ type Query {
 		filter: LocalFilterInput
 		limit: Int
 		skip: Int
-		sort: [LocalSortInput]
+		sort: [LocalSortInput!]
 	): [Local!]!
 	allTipoLocal(
 		filter: TipoLocalFilterInput
 		limit: Int
 		skip: Int
-		sort: [TipoLocalSortInput]
+		sort: [TipoLocalSortInput!]
 	): [TipoLocal!]!
 }
 
@@ -90,7 +90,7 @@ input TipoLocalCreateInput {
 }
 
 input TipoLocalSortInput {
-	field: TipoLocalFieldsEnum
+	field: TipoLocalFieldsEnum!
 	order: SortOrderEnum
 }
 
@@ -152,6 +152,6 @@ input LocalFilterInputRecursive {
 }
 
 input LocalSortInput {
-	field: LocalFieldsEnum
+	field: LocalFieldsEnum!
 	order: SortOrderEnum
 }

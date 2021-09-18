@@ -8,6 +8,7 @@ use Siler\GraphQL\DateTimeScalar;
 
 use function Siler\Config\config;
 
+/** @var array<string> $db */
 $db = config('db');
 
 R::setup(
@@ -18,7 +19,8 @@ R::setup(
 
 function fnCreateResolver(string $tableName): Closure
 {
-    return function ($root, $args) use ($tableName) {
+    return function (array $_root, array $args) use ($tableName) {
+        /** @var array $input */
         $input = $args['input'];
         $object = R::load($tableName, 0);
         foreach ($input as $ik => $iv) {
@@ -33,7 +35,7 @@ function fnCreateResolver(string $tableName): Closure
 /**
  * @param array<string|array<string>> $filter
  *
- * @return array<string|array<string>>
+ * @return array{bindings: array<array<string>|mixed>, search: ""|list<non-empty-string>}
  */
 function filterString(string $field, array $filter): array
 {
@@ -105,7 +107,7 @@ function filterString(string $field, array $filter): array
 /**
  * @return array<array<string>>
  */
-function filterID(string $field, string $filter): array
+function filterID(string $field, ?string $filter): array
 {
     return is_null($filter)
         ? [
@@ -197,6 +199,62 @@ function filterInput(array $map, array $filter): array
 }
 
 /**
+ * @param array<?string> $item
+ *
+ * @return string|null
+ */
+function sortInputItem(array $item, bool $debug = false)
+{
+    $field = array_key_exists('field', $item) ? strtolower($item['field']) : null;
+    $order = array_key_exists('order', $item) ? $item['order'] : null;
+    $result = empty($field) ? null : (
+        empty($order) ? $field : (
+        "{$field} {$order}"));
+    if ($debug) {
+        echo '{"die":4.1,"error": "sortInputItem", "item":';
+        echo json_encode($item);
+        echo ', "field": ';
+        echo json_encode($field);
+        echo ', "order": ';
+        echo json_encode($order);
+        echo ', "result": ';
+        echo json_encode($result);
+        echo '}';
+        die;
+    }
+
+    return $result;
+}
+
+/**
+ * @param array<?string|array<?string>> $input
+ *
+ * @return array<string>|null
+ */
+function sortInput(array $input)
+{
+    $list = [];
+    /**
+     * @psalm-suppress InvalidArgument
+     */
+    $direct = sortInputItem($input);
+    if (!empty($direct)) {
+        $list[] = $direct;
+    }
+    foreach ($input as $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+        $item = sortInputItem($item);
+        if (!empty($item)) {
+            $list[] = $item;
+        }
+    }
+
+    return array_key_exists(0, $list) ? $list : null;
+}
+
+/**
  * @param array<string> $filterInputMap
  */
 function fnCreateAll(string $tableName, array $filterInputMap): Closure
@@ -204,6 +262,7 @@ function fnCreateAll(string $tableName, array $filterInputMap): Closure
     return static function ($root, $args) use ($tableName, $filterInputMap) {
         $search = [];
         $bindings = [];
+        $sorting = null;
         if (array_key_exists('filter', $args)) {
             // echo '{"die":1,"error": "has filter", "obj":';
             // echo json_encode($filterInputMap);
@@ -221,8 +280,18 @@ function fnCreateAll(string $tableName, array $filterInputMap): Closure
             $search = $filter['search'];
             $bindings = $filter['bindings'];
         }
+        if (array_key_exists('sort', $args)) {
+            $sorting = sortInput($args['sort']);
+            $sorting = 'ORDER BY ' . implode(', ', $sorting);
+            // echo '{"die":4,"error": "created sorting", "args[sort]":';
+            // echo json_encode($args['sort']);
+            // echo ', "sorting": ';
+            // echo json_encode($sorting);
+            // echo '}';
+            // die;
+        }
 
-        return R::find($tableName, implode(' AND ', $search), $bindings);
+        return R::find($tableName, implode(' AND ', $search), $bindings, $sorting);
     };
 }
 
