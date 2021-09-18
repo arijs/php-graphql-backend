@@ -39,6 +39,7 @@ class GraphQL
         $schema = include __DIR__ . '/../GraphQL/schema.php';
 
         try {
+            SGraphQL\debug();
             $data = SGraphQL\execute($schema, $body);
         } catch (Throwable $e) {
             $data = $e->getMessage();

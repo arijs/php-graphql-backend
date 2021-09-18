@@ -9,7 +9,8 @@ use function implode;
 
 class Dsn
 {
-    public static function fromArray(array $db)
+    /** @param mixed[] $db */
+    public static function fromArray(array $db): string
     {
         $dsn = [];
         $keys = ['host', 'port', 'dbname'];

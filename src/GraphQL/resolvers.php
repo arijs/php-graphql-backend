@@ -16,7 +16,7 @@ R::setup(
     $db['password'],
 );
 
-function fnCreateResolver($tableName)
+function fnCreateResolver(string $tableName): Closure
 {
     return function ($root, $args) use ($tableName) {
         $input = $args['input'];
@@ -30,7 +30,12 @@ function fnCreateResolver($tableName)
     };
 }
 
-function filterString($field, $filter)
+/**
+ * @param array<string|array<string>> $filter
+ *
+ * @return array<string|array<string>>
+ */
+function filterString(string $field, array $filter): array
 {
     if (empty($filter)) {
         return [
@@ -97,7 +102,10 @@ function filterString($field, $filter)
     ];
 }
 
-function filterID($field, $filter)
+/**
+ * @return array<array<string>>
+ */
+function filterID(string $field, string $filter): array
 {
     return is_null($filter)
         ? [
@@ -110,7 +118,13 @@ function filterID($field, $filter)
         ];
 }
 
-function filterInput($map, $filter)
+/**
+ * @param array<string> $map
+ * @param array<string|array<string>> $filter
+ *
+ * @return array<string|array<string>>
+ */
+function filterInput(array $map, array $filter): array
 {
     $search = [];
     $bindings = [];
@@ -182,7 +196,10 @@ function filterInput($map, $filter)
     ];
 }
 
-function fnCreateAll($tableName, $filterInputMap)
+/**
+ * @param array<string> $filterInputMap
+ */
+function fnCreateAll(string $tableName, array $filterInputMap): Closure
 {
     return static function ($root, $args) use ($tableName, $filterInputMap) {
         $search = [];
