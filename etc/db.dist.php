@@ -1,7 +1,7 @@
 <?php
 
 return [
-	'db' => [
+	'dist_db' => [ // remove 'dist_' prefix
 		'driver'   => 'mysql',
 		'host'     => 'your.hostname.com',
 		'port'     => 3306,

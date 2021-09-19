@@ -10,9 +10,16 @@ use function Siler\Config\config;
 
 /** @var array<string> $db */
 $db = config('db');
+$db_dsn = Dsn::fromArray($db);
+
+// echo '{"die":0,"error": "db dsn"';
+// echo ', "db": '.json_encode($db);
+// echo ', "db_dsn": '.json_encode($db_dsn);
+// echo '}';
+// die;
 
 R::setup(
-    Dsn::fromArray($db),
+    $db_dsn,
     $db['username'],
     $db['password'],
 );

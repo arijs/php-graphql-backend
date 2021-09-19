@@ -16,7 +16,7 @@ class GraphiQL
     {
         return Diactoros\html(
             // GraphQL\graphiql('http://localhost:8181/___graphql')
-            file_get_contents(__DIR__ . '/../graphiql-ex.html'),
+            file_get_contents(__DIR__ . '/../graphiql.html'),
         );
     }
 }
