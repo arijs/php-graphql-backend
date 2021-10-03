@@ -127,6 +127,37 @@ function filterID(string $field, ?string $filter): array
         ];
 }
 
+$queryAllTipoLocal = fnCreateAll('tipo_local', [
+    'id' => 'filterID',
+    'nome' => 'filterString',
+]);
+
+$filterLocalByTipo = static function ($field, $filter) use ($queryAllTipoLocal) {
+    // $allTipoLocal = $queryType['allTipoLocal'];
+    // $queryTypeInspect = var_export($queryAllTipoLocal, true);
+    $tipos = $queryAllTipoLocal([], ['filter' => $filter, '_singleCol' => 'id']);
+
+    // echo '{"die":6,"error": "search local by type", "field":';
+    // echo json_encode($field);
+    // echo ', "queryTypeInspect": ';
+    // echo json_encode($queryTypeInspect);
+    // echo ', "filter": ';
+    // echo json_encode($filter);
+    // echo ', "tipos": ';
+    // echo json_encode($tipos);
+    // echo '}';
+    // die;
+
+    $ins = R::genSlots($tipos);
+    $search = ["id_tipo IN ({$ins})"];
+    $bindings = array_values($tipos);
+
+    return [
+        'search' => $search,
+        'bindings' => $bindings,
+    ];
+};
+
 /**
  * @param array<string> $map
  * @param array<string|array<string>> $filter
@@ -270,6 +301,8 @@ function fnCreateAll(string $tableName, array $filterInputMap): Closure
         $search = [];
         $bindings = [];
         $sorting = null;
+        $offset = null;
+        $limit = null;
         if (array_key_exists('filter', $args)) {
             // echo '{"die":1,"error": "has filter", "obj":';
             // echo json_encode($filterInputMap);
@@ -297,20 +330,54 @@ function fnCreateAll(string $tableName, array $filterInputMap): Closure
             // echo '}';
             // die;
         }
+        if (array_key_exists('limit', $args)) {
+            $limit = "LIMIT {$args['limit']}";
+        } else {
+            $limit = "LIMIT 20";
+        }
+        if (array_key_exists('skip', $args)) {
+            $offset = "OFFSET {$args['skip']}";
+        }
+        $snippet = implode(' ', array_filter([$sorting, $limit, $offset]));
 
-        return R::find($tableName, implode(' AND ', $search), $bindings, $sorting);
+        if (array_key_exists('_singleCol', $args)) {
+            $cond = '';
+            if (count($search)) {
+                $cond = ' WHERE '.implode(' AND ', $search);
+            }
+            return R::getCol( "SELECT ${args['_singleCol']} FROM ${tableName}${cond}", $bindings );
+        } else {
+            return R::find($tableName, implode(' AND ', $search), $bindings, $snippet);
+        }
     };
 }
 
-$queryType = [
-    'allLocal' => fnCreateAll('locais', [
-        'id' => 'filterID',
-        'nome' => 'filterString',
-    ]),
-    'allTipoLocal' => fnCreateAll('tipo_local', [
-        'id' => 'filterID',
-        'nome' => 'filterString',
-    ]),
+$queryType = [];
+$queryType['allLocal'] = fnCreateAll('locais', [
+    'codigo_postal' => 'filterString',
+    'id' => 'filterID',
+    'id_dentro_de' => 'filterID',
+    'nome' => 'filterString',
+    'sigla' => 'filterString',
+    'tipo' => $filterLocalByTipo,
+]);
+$queryType['allTipoLocal'] = $queryAllTipoLocal;
+
+$localType = [
+    'tipo' => function ($local) {
+        $tipoObj = R::findOne('tipo_local', 'id = ?', [$local['id_tipo']]);
+        // echo '{"die":5,"error": "search tipo from local", "local[id_tipo]":';
+        // echo json_encode($local['id_tipo']);
+        // echo ', "tipoObj": ';
+        // echo json_encode($tipoObj);
+        // echo '}';
+        // die;
+        return $tipoObj;
+    },
+    'dentro_de' => function ($local) {
+        $dentro = R::findOne('locais', 'id = ?', [$local['id_dentro_de']]);
+        return $dentro;
+    },
 ];
 
 $mutationType = [
@@ -322,4 +389,5 @@ return [
     'Query' => $queryType,
     'Mutation' => $mutationType,
     'DateTime' => new DateTimeScalar(),
+    'Local' => $localType,
 ];
