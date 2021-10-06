@@ -126,12 +126,12 @@ enum LocalFieldsEnum {
 }
 
 input LocalFilterInput {
-	id: StringFilterInput
+	id: ID
 	sigla: StringFilterInput
 	nome: StringFilterInput
 	codigo_postal: StringFilterInput
 	# obsId: StringFilterInput
-	id_dentro_de: StringFilterInput
+	id_dentro_de: ID
 	dentro_de: LocalFilterInput
 	dentro_de_recursive: LocalFilterInputRecursive
 	tipo: TipoLocalFilterInput

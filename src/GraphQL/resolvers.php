@@ -127,44 +127,13 @@ function filterID(string $field, ?string $filter): array
         ];
 }
 
-$queryAllTipoLocal = fnCreateAll('tipo_local', [
-    'id' => 'filterID',
-    'nome' => 'filterString',
-]);
-
-$filterLocalByTipo = static function ($field, $filter) use ($queryAllTipoLocal) {
-    // $allTipoLocal = $queryType['allTipoLocal'];
-    // $queryTypeInspect = var_export($queryAllTipoLocal, true);
-    $tipos = $queryAllTipoLocal([], ['filter' => $filter, '_singleCol' => 'id']);
-
-    // echo '{"die":6,"error": "search local by type", "field":';
-    // echo json_encode($field);
-    // echo ', "queryTypeInspect": ';
-    // echo json_encode($queryTypeInspect);
-    // echo ', "filter": ';
-    // echo json_encode($filter);
-    // echo ', "tipos": ';
-    // echo json_encode($tipos);
-    // echo '}';
-    // die;
-
-    $ins = R::genSlots($tipos);
-    $search = ["id_tipo IN ({$ins})"];
-    $bindings = array_values($tipos);
-
-    return [
-        'search' => $search,
-        'bindings' => $bindings,
-    ];
-};
-
 /**
  * @param array<string> $map
  * @param array<string|array<string>> $filter
  *
  * @return array<string|array<string>>
  */
-function filterInput(array $map, array $filter): array
+function filterInput(array &$map, array $filter): array
 {
     $search = [];
     $bindings = [];
@@ -295,9 +264,9 @@ function sortInput(array $input)
 /**
  * @param array<string> $filterInputMap
  */
-function fnCreateAll(string $tableName, array $filterInputMap): Closure
+function fnCreateAll(string $tableName, array &$filterInputMap): Closure
 {
-    return static function ($root, $args) use ($tableName, $filterInputMap) {
+    return static function ($root, $args) use ($tableName, &$filterInputMap) {
         $search = [];
         $bindings = [];
         $sorting = null;
@@ -352,16 +321,81 @@ function fnCreateAll(string $tableName, array $filterInputMap): Closure
     };
 }
 
-$queryType = [];
-$queryType['allLocal'] = fnCreateAll('locais', [
+$tipoLocalFilterFields = [
+    'id' => 'filterID',
+    'nome' => 'filterString',
+];
+$queryAllTipoLocal = fnCreateAll('tipo_local', $tipoLocalFilterFields);
+
+$filterLocalByTipo = static function ($field, $filter) use (&$queryAllTipoLocal) {
+    // $allTipoLocal = $queryType['allTipoLocal'];
+    // $queryTypeInspect = var_export($queryAllTipoLocal, true);
+    $tipos = $queryAllTipoLocal([], ['filter' => $filter, '_singleCol' => 'id']);
+
+    // echo '{"die":6,"error": "search local by type", "field":';
+    // echo json_encode($field);
+    // echo ', "queryTypeInspect": ';
+    // echo json_encode($queryTypeInspect);
+    // echo ', "filter": ';
+    // echo json_encode($filter);
+    // echo ', "tipos": ';
+    // echo json_encode($tipos);
+    // echo '}';
+    // die;
+
+    $ins = R::genSlots($tipos);
+    $search = ["id_tipo IN ({$ins})"];
+    $bindings = array_values($tipos);
+
+    return [
+        'search' => $search,
+        'bindings' => $bindings,
+    ];
+};
+
+$localFilterFields = [
     'codigo_postal' => 'filterString',
     'id' => 'filterID',
     'id_dentro_de' => 'filterID',
+    'dentro_de' => null,
     'nome' => 'filterString',
     'sigla' => 'filterString',
     'tipo' => $filterLocalByTipo,
-]);
-$queryType['allTipoLocal'] = $queryAllTipoLocal;
+];
+$queryAllLocal = fnCreateAll('locais', $localFilterFields);
+
+$filterLocalByDentroDe = static function ($field, $filter) use (&$queryAllLocal) {
+    // $allTipoLocal = $queryType['allTipoLocal'];
+    // $queryTypeInspect = var_export($queryAllTipoLocal, true);
+    $locais = $queryAllLocal([], ['filter' => $filter, '_singleCol' => 'id']);
+
+    // echo '{"die":6,"error": "search local by type", "field":';
+    // echo json_encode($field);
+    // echo ', "queryTypeInspect": ';
+    // echo json_encode($queryTypeInspect);
+    // echo ', "filter": ';
+    // echo json_encode($filter);
+    // echo ', "tipos": ';
+    // echo json_encode($tipos);
+    // echo '}';
+    // die;
+
+    $ins = R::genSlots($locais);
+    $search = ["id_dentro_de IN ({$ins})"];
+    $bindings = array_values($locais);
+
+    return [
+        'search' => $search,
+        'bindings' => $bindings,
+    ];
+};
+
+$localFilterFields['dentro_de'] = $filterLocalByDentroDe;
+
+$queryType = [
+    'allLocal' => $queryAllLocal,
+    'allTipoLocal' => $queryAllTipoLocal,
+];
 
 $localType = [
     'tipo' => function ($local) {

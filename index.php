@@ -35,6 +35,7 @@ $response = Route\matching([
 	Route\get('/secret', $rh->pipeline(new Routes\Secret, $ppAuth), $request),
 	Route\get('/___graphql', $rh->handler(new Routes\GraphiQL), $request),
 	Route\post('/___graphql', $rh->handler(new Routes\GraphQL), $request),
+	Route\get('/___graphpg', $rh->handler(new Routes\GraphPG), $request),
 	Diactoros\json('not found', 404),
 ]);
 
