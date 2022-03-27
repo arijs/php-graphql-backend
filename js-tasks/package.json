@@ -1,0 +1,23 @@
+{
+  "name": "mwb-parser",
+  "version": "0.0.1",
+  "description": "-",
+  "main": "mwb-parser.mjs",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/arijs/php-graphql-backend.git"
+  },
+  "author": "Rafael Hengles <rhengles@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/arijs/php-graphql-backend/issues"
+  },
+  "homepage": "https://github.com/arijs/php-graphql-backend#readme",
+  "dependencies": {
+    "@arijs/frontend": "^0.3.0",
+    "@arijs/stream-xml-parser": "^0.2.8"
+  }
+}

@@ -16,7 +16,8 @@ const xmlStreamOpt = {
 	encoding: 'utf8',
 	highWaterMark: 1024,
 }
-const schemaName = 'name_of_your_schema_here'
+
+const writeModelsFromSchema = false //'name_of_schema'
 
 const reGuid = /^\{?[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}\}?$/i
 const isGuid = str => reGuid.test(str)
@@ -39,7 +40,7 @@ async function main() {
 function run () {
 	return new Promise(async (resolve, reject) => {
 		const rs = await tryOpenReadPromise(
-			pathJoin(dirname, 'modelo.mwb.xml'),
+			pathJoin(dirname, 'etc/modelo.mwb.xml'),
 			xmlStreamOpt,
 		)
 
@@ -103,6 +104,7 @@ function run () {
 			const assTables = fnAssoc()
 			const assColumns = fnAssoc()
 			const assForeign = fnAssoc()
+			const assIndices = fnAssoc()
 			if (false) {
 				console.log(`getKeys Guid =========`, gGet)
 				console.log(`setKeys Guid =========`, gSetKeys.length, gSetKeys.slice(0, 10).map(key => {
@@ -124,7 +126,7 @@ function run () {
 					return { key, name, attr }
 				}))
 			}
-			if (false) {
+			if (true) {
 				const schemas = bs.getSchemas()
 				schemas.forEach(sc => {
 					assSchemas.set(sc.attr.id, sc)
@@ -136,11 +138,15 @@ function run () {
 						t.foreign.forEach(f => {
 							assForeign.set(f.attr.id, f)
 						})
+						t.indices.forEach(i => {
+							assIndices.set(i.attr.id, i)
+						})
 					})
 				})
 				const { set: mapTables } = assTables.getMaps()
 				const { set: mapColumn } = assColumns.getMaps()
 				schemas.forEach(sc => {
+					// ddsoft_adianti_ddsoft
 					console.log(`schema name =========`, sc.props?.name?.text)
 					console.log(`schema attrs =========`, sc.attr)
 					console.log(`schema props =========`, sc.props)
@@ -153,6 +159,19 @@ function run () {
 							// console.log(`column attrs - - - - -`, c.attr)
 							// console.log(`column props - - - - -`, c.props)
 							console.log(`col:`, printColumn(c))
+						})
+						t.indices.forEach(i => {
+							const it = i.props?.indexType?.text
+							console.log(`index name - - - - -`, i.props?.name?.text, `(${it})`)
+							// console.log(`index attrs - - - - -`, i.attr)
+							// console.log(`index props - - - - -`, i.props)
+							// console.log(`  . index columns - - - - -`)
+							i.columns.forEach(c => {
+								console.log(`    .`, printColumn(mapColumn[c.props.referencedColumn.link]))
+								// console.log(`index column name - - - - -`, c.props?.name?.text)
+								// console.log(`index column attrs - - - - -`, c.attr)
+								// console.log(`index column props - - - - -`, c.props)
+							})
 						})
 						t.foreign.forEach(f => {
 							const {
@@ -181,16 +200,22 @@ function run () {
 			}
 			console.log(`work end`)
 			xp.end()
-			let scsel = undefined
-			bs.getSchemas().forEach(sc => {
-				if (sc.props?.name?.text === schemaName) {
-					scsel = sc
+			let scdd = undefined
+			if (writeModelsFromSchema) {
+				bs.getSchemas().forEach(sc => {
+					// ddsoft_adianti_ddsoft
+					if (sc.props?.name?.text === writeModelsFromSchema) {
+						scdd = sc
+					}
+				})
+				if (scdd) {
+					writeModels(scdd).then(resolve, reject)
+				} else {
+					console.log(`schema to write not found`)
+					resolve()
 				}
-			})
-			if (scsel) {
-				writeModels(scsel).then(resolve, reject)
 			} else {
-				console.log(`schema to write not found`)
+				console.log(`No schema to write models specified`)
 				resolve()
 			}
 		})
@@ -458,6 +483,8 @@ function fnBuildSchema(elHandler) {
 	let currentTable = undefined
 	let currentColumn = undefined
 	let currentForeign = undefined
+	let currentIndex = undefined
+	let currentIndexColumn = undefined
 	let currentProperty = undefined
 	let currentLink = undefined
 	let currentPropertyList = undefined
@@ -466,6 +493,8 @@ function fnBuildSchema(elHandler) {
 	const matchTable = fnMatchStruct('db.mysql.Table', elHandler)
 	const matchColumn = fnMatchStruct('db.mysql.Column', elHandler)
 	const matchForeign = fnMatchStruct('db.mysql.ForeignKey', elHandler)
+	const matchIndex = fnMatchStruct('db.mysql.Index', elHandler)
+	const matchIndexColumn = fnMatchStruct('db.mysql.IndexColumn', elHandler)
 	const matchProperty = fnMatchProperty(elHandler)
 	const matchLink = fnMatchLink(elHandler)
 	const matchPropertyList = fnMatchPropertyList(elHandler)
@@ -513,6 +542,14 @@ function fnBuildSchema(elHandler) {
 			case matchForeign.testAll(node, path).success:
 				foreignStart(node, path, attr);
 				return;
+			case currentIndex
+				&& matchIndexColumn.testAll(node, path).success:
+				indexColumnStart(node, path, attr);
+				return;
+			case currentTable
+				&& matchIndex.testAll(node, path).success:
+				indexStart(node, path, attr);
+				return;
 			case currentSchema // pro Table e pro Column estarem ativos, o Schema precisa estar
 				&& !currentProperty
 				&& matchProperty.testAll(node, path).success:
@@ -523,12 +560,12 @@ function fnBuildSchema(elHandler) {
 				&& matchLink.testAll(node, path).success:
 				linkStart(node, path, attr);
 				return;
-			case currentForeign
+			case (currentForeign || currentIndexColumn)
 				// && !currentPropertyList
 				&& matchPropertyList.testAll(node, path).success:
 				propertyListStart(node, path, attr);
 				return;
-			case currentForeign
+			case (currentForeign || currentIndexColumn)
 				// && currentPropertyList
 				// && !currentPropertyListLink
 				&& matchPropertyListLink.testAll(node, path).success:
@@ -549,6 +586,14 @@ function fnBuildSchema(elHandler) {
 				return;
 			case matchForeign.testAll(node, path).success:
 				foreignEnd(node, path, attr);
+				return;
+			case currentIndex
+				&& matchIndexColumn.testAll(node, path).success:
+				indexColumnEnd(node, path, attr);
+				return;
+			case currentTable
+				&& matchIndex.testAll(node, path).success:
+				indexEnd(node, path, attr);
 				return;
 			case currentSchema
 				&& currentProperty
@@ -627,6 +672,7 @@ function fnBuildSchema(elHandler) {
 		currentTable = {
 			columns: [],
 			foreign: [],
+			indices: [],
 			node,
 			attr,
 			props: {},
@@ -713,6 +759,75 @@ function fnBuildSchema(elHandler) {
 		currentTable.foreign.push(currentForeign)
 		currentForeign = undefined
 	}
+	function indexStart(node, path, attr) {
+		if (currentIndex) {
+			console.error('[E.BLSC]', currentIndex, node, path)
+			throw new Error(`fnBuildSchema: cannot create new index while another is already open`)
+		}
+		currentIndex = {
+			node,
+			attr,
+			props: {},
+			columns: [],
+			pathIndex: path.length,
+		}
+	}
+	function indexEnd(node, path) {
+		if (!currentSchema) {
+			console.error('[E.BLSC]', currentSchema, node, path)
+			throw new Error(`fnBuildSchema: cannot end index because no schema is currently open`)
+		}
+		if (!currentTable) {
+			console.error('[E.BLSC]', currentTable, node, path)
+			throw new Error(`fnBuildSchema: cannot end index because no table is currently open`)
+		}
+		if (!currentIndex) {
+			console.error('[E.BLSC]', currentIndex, node, path)
+			throw new Error(`fnBuildSchema: cannot end index because none is currently open`)
+		}
+		if (node !== currentIndex.node) {
+			console.error('[E.BLSC]', currentIndex, node, path)
+			throw new Error(`fnBuildSchema: cannot end index because closing node is not the same as the opening node`)
+		}
+		currentTable.indices.push(currentIndex)
+		currentIndex = undefined
+	}
+	function indexColumnStart(node, path, attr) {
+		if (currentIndexColumn) {
+			console.error('[E.BLSC]', currentIndexColumn, node, path)
+			throw new Error(`fnBuildSchema: cannot create new index column while another is already open`)
+		}
+		currentIndexColumn = {
+			node,
+			attr,
+			props: {},
+			pathIndex: path.length,
+		}
+	}
+	function indexColumnEnd(node, path) {
+		if (!currentSchema) {
+			console.error('[E.BLSC]', currentSchema, node, path)
+			throw new Error(`fnBuildSchema: cannot end index column because no schema is currently open`)
+		}
+		if (!currentTable) {
+			console.error('[E.BLSC]', currentTable, node, path)
+			throw new Error(`fnBuildSchema: cannot end index column because no table is currently open`)
+		}
+		if (!currentIndex) {
+			console.error('[E.BLSC]', currentIndex, node, path)
+			throw new Error(`fnBuildSchema: cannot end index column because no index is currently open`)
+		}
+		if (!currentIndexColumn) {
+			console.error('[E.BLSC]', currentIndexColumn, node, path)
+			throw new Error(`fnBuildSchema: cannot end index column because none is currently open`)
+		}
+		if (node !== currentIndexColumn.node) {
+			console.error('[E.BLSC]', currentIndexColumn, node, path)
+			throw new Error(`fnBuildSchema: cannot end index column because closing node is not the same as the opening node`)
+		}
+		currentIndex.columns.push(currentIndexColumn)
+		currentIndexColumn = undefined
+	}
 	function propertyStart(node, path, attr) {
 		if (currentProperty) {
 			console.error('[E.BLSC]', currentProperty, node, path)
@@ -725,16 +840,16 @@ function fnBuildSchema(elHandler) {
 		currentProperty = {
 			attr,
 			node,
-			target: currentForeign || currentColumn || currentTable || currentSchema,
+			target: currentForeign || currentIndexColumn || currentIndex || currentColumn || currentTable || currentSchema,
 			pathIndex: path.length,
 			text: null,
 		}
 	}
 	function propertyEnd(node, path) {
-		const currentActive = currentForeign || currentColumn || currentTable || currentSchema
+		const currentActive = currentForeign || currentIndexColumn || currentIndex || currentColumn || currentTable || currentSchema
 		if (!currentActive) {
 			console.error('[E.BLSC]', node, path)
-			throw new Error(`fnBuildSchema: cannot end property because no column, table or schema is currently open`)
+			throw new Error(`fnBuildSchema: cannot end property because no column, foreign key, index, index column, table or schema is currently open`)
 		}
 		if (!currentProperty) {
 			console.error('[E.BLSC]', node, path)
@@ -776,13 +891,13 @@ function fnBuildSchema(elHandler) {
 		currentLink = {
 			attr,
 			node,
-			target: currentForeign || currentColumn || currentTable || currentSchema,
+			target: currentForeign || currentIndexColumn || currentIndex || currentColumn || currentTable || currentSchema,
 			pathIndex: path.length,
 			link: null,
 		}
 	}
 	function linkEnd(node, path) {
-		const currentActive = currentForeign || currentColumn || currentTable || currentSchema
+		const currentActive = currentForeign || currentIndexColumn || currentIndex || currentColumn || currentTable || currentSchema
 		if (!currentActive) {
 			console.error('[E.BLSC]', node, path)
 			throw new Error(`fnBuildSchema: cannot end link because no column, table or schema is currently open`)
@@ -831,16 +946,16 @@ function fnBuildSchema(elHandler) {
 		currentPropertyList = {
 			attr,
 			node,
-			target: currentForeign || currentColumn || currentTable || currentSchema,
+			target: currentForeign || currentIndexColumn || currentIndex || currentColumn || currentTable || currentSchema,
 			pathIndex: path.length,
 			list: [],
 		}
 	}
 	function propertyListEnd(node, path) {
-		const currentActive = currentForeign || currentColumn || currentTable || currentSchema
+		const currentActive = currentForeign || currentIndexColumn || currentIndex || currentColumn || currentTable || currentSchema
 		if (!currentActive) {
 			console.error('[E.BLSC]', node, path)
-			throw new Error(`fnBuildSchema: cannot end property list because no column, foreign column, table or schema is currently open`)
+			throw new Error(`fnBuildSchema: cannot end property list because no column, foreign key, index, index column, table or schema is currently open`)
 		}
 		if (!currentPropertyList) {
 			console.error('[E.BLSC]', node, path)
@@ -1026,6 +1141,10 @@ function printColumn(c) {
 	const ai = c.props.autoIncrement.text === '1'
 	const aiStr = ai ? 'AUTO_INC' : ''
 	return `${c.props.name.text} ${simplifyType(c.props.simpleType.link)}${lenStr} ${nullStr} ${defStr} ${aiStr}`
+}
+
+function printIndex(i) {
+
 }
 
 function parseFile(fpath, callback) {

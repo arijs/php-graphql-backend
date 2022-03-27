@@ -7,17 +7,17 @@ import {
 	// tryOpenReadPromise,
 	tryOpenWritePromise,
 	tryWriteStreamEnd,
-} from '../../github/front-end/src/server/utils/streams.mjs'
+} from '@arijs/frontend/server/utils/streams'
 import {
 	openDirArrayPromise,
-} from '../../github/front-end/src/server/utils/open-dir.mjs'
+} from '@arijs/frontend/server/utils/open-dir'
 import {
 	snakeToCamel,
 	snakeToPascal,
 	simplifyType,
 } from './lib.mjs'
 
-const dirname = fileURLToPath(new URL('..', import.meta.url)).replace(/\/+$/,'')
+const dirname = fileURLToPath(new URL('.', import.meta.url)).replace(/\/+$/,'')
 
 const modelDirName = `Models`
 const csvStreamOpt = {
