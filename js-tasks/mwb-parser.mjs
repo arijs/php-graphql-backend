@@ -17,7 +17,8 @@ const xmlStreamOpt = {
 	highWaterMark: 1024,
 }
 
-const writeModelsFromSchema = false //'name_of_schema'
+// ddsoft_adianti_ddsoft
+const writeModelsFromSchema = 'ddsoft_adianti_ddsoft' //'name_of_schema'
 
 const reGuid = /^\{?[0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12}\}?$/i
 const isGuid = str => reGuid.test(str)
@@ -100,11 +101,18 @@ function run () {
 			const { get: oGet, set: oSet } = assOther.getMaps()
 			const gSetKeys = Object.keys(gSet)
 			const oSetKeys = Object.keys(oSet)
-			const assSchemas = fnAssoc()
-			const assTables = fnAssoc()
-			const assColumns = fnAssoc()
-			const assForeign = fnAssoc()
-			const assIndices = fnAssoc()
+			const assoc = {
+				schemas: fnAssoc(),
+				tables: fnAssoc(),
+				columns: fnAssoc(),
+				foreign: fnAssoc(),
+				indices: fnAssoc(),
+			}
+			// const assSchemas = fnAssoc()
+			// const assTables = fnAssoc()
+			// const assColumns = fnAssoc()
+			// const assForeign = fnAssoc()
+			// const assIndices = fnAssoc()
 			if (false) {
 				console.log(`getKeys Guid =========`, gGet)
 				console.log(`setKeys Guid =========`, gSetKeys.length, gSetKeys.slice(0, 10).map(key => {
@@ -129,22 +137,22 @@ function run () {
 			if (true) {
 				const schemas = bs.getSchemas()
 				schemas.forEach(sc => {
-					assSchemas.set(sc.attr.id, sc)
+					assoc.schemas.set(sc.attr.id, sc)
 					sc.tables.forEach(t => {
-						assTables.set(t.attr.id, t)
+						assoc.tables.set(t.attr.id, t)
 						t.columns.forEach(c => {
-							assColumns.set(c.attr.id, c)
+							assoc.columns.set(c.attr.id, c)
 						})
 						t.foreign.forEach(f => {
-							assForeign.set(f.attr.id, f)
+							assoc.foreign.set(f.attr.id, f)
 						})
 						t.indices.forEach(i => {
-							assIndices.set(i.attr.id, i)
+							assoc.indices.set(i.attr.id, i)
 						})
 					})
 				})
-				const { set: mapTables } = assTables.getMaps()
-				const { set: mapColumn } = assColumns.getMaps()
+				const { set: mapTables } = assoc.tables.getMaps()
+				const { set: mapColumn } = assoc.columns.getMaps()
 				schemas.forEach(sc => {
 					// ddsoft_adianti_ddsoft
 					console.log(`schema name =========`, sc.props?.name?.text)
@@ -203,13 +211,12 @@ function run () {
 			let scdd = undefined
 			if (writeModelsFromSchema) {
 				bs.getSchemas().forEach(sc => {
-					// ddsoft_adianti_ddsoft
 					if (sc.props?.name?.text === writeModelsFromSchema) {
 						scdd = sc
 					}
 				})
 				if (scdd) {
-					writeModels(scdd).then(resolve, reject)
+					writeModels(scdd, assoc).then(resolve, reject)
 				} else {
 					console.log(`schema to write not found`)
 					resolve()

@@ -17,9 +17,9 @@ import {
 	simplifyType,
 } from './lib.mjs'
 
-const dirname = fileURLToPath(new URL('.', import.meta.url)).replace(/\/+$/,'')
+const dirname = fileURLToPath(new URL('../src', import.meta.url)).replace(/\/+$/,'')
 
-const modelDirName = `Models`
+const modelDirName = `Model`
 const csvStreamOpt = {
 	encoding: 'utf8',
 	highWaterMark: 1024,
@@ -75,19 +75,136 @@ ${table.columns.map(c => {
 }`
 }
 
+function getTablePk(table) {
+	const tableRaw = table.props.name.text
+	const pkIndex = table.indices.find(i => 'PRIMARY' === i.props?.indexType?.text)
+	const pkCols = pkIndex.columns.map(ic =>
+		table.columns.find(c =>
+			c.attr.id === ic.props.referencedColumn.link
+		)
+	)
+	const pkColNames = pkCols.map(c => c.props?.name?.text)
+	if (!pkColNames[0]) {
+		throw new Error(`Erro em ${JSON.stringify(tableRaw)}: O nome da coluna chave primária está vazio ${JSON.stringify(pkColNames)}`)
+	}
+	if ('string' !== typeof pkColNames[0]) {
+		throw new Error(`Erro em ${JSON.stringify(tableRaw)}: O nome da coluna chave primária não é uma string ${JSON.stringify(pkColNames)}`)
+	}
+	if (pkColNames.length !== 1) {
+		throw new Error(`Erro em ${JSON.stringify(tableRaw)}: Chave primária não tem só uma coluna ${JSON.stringify(pkColNames)}`)
+	}
+	return {
+		col: pkCols[0],
+		colName: pkColNames[0],
+	}
+}
+
+function printTableFile(table) {
+	const tableRaw = table.props.name.text
+	const tablePascal = snakeToPascal(tableRaw)
+	const {
+		col: pkCol,
+		colName: pkName,
+	} = getTablePk(table)
+	const pkIsNumber = colIsNumber(pkCol)
+	const pkIsAutoInc = colIsAutoInc(pkCol)
+
+	return `<?php
+
+namespace App\\Model;
+
+class ${tablePascal}Table extends _BaseTable
+{
+	private $tableGateway;
+
+	public static $model = ${tablePascal}::class;
+	public static $tableName = '${tableRaw}';
+	public static $pkName = '${pkName}';
+	public static $pkIsNumber = ${pkIsNumber ? `true` : `false`};
+	public static $pkIsAutoInc = ${pkIsAutoInc ? `true` : `false`};
+
+	public function get${tablePascal}($${pkName})
+	{
+		$rowset = $this->tableGateway->select(['${pkName}' => ${pkIsNumber ? `(int) ` : ``}$${pkName}]);
+		$row = $rowset->current();
+		if (! $row) {
+			throw new RuntimeException(sprintf(
+				'Could not find row with identifier %d',
+				$id
+			));
+		}
+
+		return $row;
+	}
+
+	public function save${tablePascal}(${tablePascal} $${tableRaw})
+	{
+		$${pkName} = ${pkIsNumber ? `(int) ` : ``}$${tableRaw}->${pkName};
+
+		if ($id === 0) {
+			return $this->insert${tablePascal}($${tableRaw});
+		}
+
+		return $this->update${tablePascal}($${tableRaw});
+	}
+
+	public function insert${tablePascal}(${tablePascal} $${tableRaw})
+	{
+		$this->tableGateway->insert($${tableRaw}->toArray());
+${pkIsAutoInc ? `		$${tableRaw}->${pkName} = $this->tableGateway->getLastInsertValue();
+` : ``}	}
+
+	public function update${tablePascal}(${tablePascal} $${tableRaw})
+	{
+		$this->tableGateway->update(
+			$${tableRaw}->toArray(),
+			['${pkName}' => ${pkIsNumber ? `(int) ` : ``}$${tableRaw}->${pkName}]
+		);
+	}
+
+	public function update${tablePascal}Array($${pkName}, array $update)
+	{
+		$this->tableGateway->update(
+			$update,
+			['${pkName}' => ${pkIsNumber ? `(int) ` : ``}$${pkName}]
+		);
+	}
+
+	public function delete${tablePascal}($${pkName})
+	{
+		$this->tableGateway->delete(['${pkName}' => ${pkIsNumber ? `(int) ` : ``}$${pkName}]);
+	}
+}`
+}
+
 export async function writeModels(schema) {
 	await openModelDir()
 
-	await Promise.all(schema.tables.map(async t => {
+	const plist = []
 
-		const ws = await tryOpenWritePromise(
-			pathJoin(dirname, modelDirName, `${snakeToPascal(t.props.name.text)}.php`),
-			csvStreamOpt
-		)
-		const data = printModelFile(t)
-		await tryWriteStreamEnd(ws, data)
+	schema.tables.forEach(t => {
 
-	}))
+		plist.push((async t => {
+			const ws = await tryOpenWritePromise(
+				pathJoin(dirname, modelDirName, `${snakeToPascal(t.props.name.text)}.php`),
+				csvStreamOpt
+			)
+			const data = printModelFile(t)
+			await tryWriteStreamEnd(ws, data)
+		})(t))
+
+		plist.push((async t => {
+			const ws = await tryOpenWritePromise(
+				pathJoin(dirname, modelDirName, `${snakeToPascal(t.props.name.text)}Table.php`),
+				csvStreamOpt
+			)
+			const data = printTableFile(t)
+			await tryWriteStreamEnd(ws, data)
+		})(t))
+
+	})
+
+	await Promise.all(plist)
 }
 
 function colEmptyValue(c) {
@@ -122,4 +239,19 @@ function colIsDate(c) {
 			return true
 	}
 	return false
+}
+
+function colIsNumber(c) {
+	switch (simplifyType(c.props.simpleType.link)) {
+		case 'int':
+		case 'tinyint':
+		case 'smallint':
+		case 'mediumint':
+			return true
+	}
+	return false
+}
+
+function colIsAutoInc(c) {
+	return c.props.autoIncrement.text === '1'
 }
