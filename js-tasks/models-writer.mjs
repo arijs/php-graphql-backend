@@ -17,7 +17,7 @@ import * as graphQLDefinition from './model-writers/graph-ql/definition.mjs'
 
 const dirname = fileURLToPath(new URL('../src', import.meta.url)).replace(/\/+$/,'')
 
-const modelDirName = `GraphQL/Definition`
+const modelDirName = `GraphQL/Definitions`
 const csvStreamOpt = {
 	encoding: 'utf8',
 	highWaterMark: 1024,
@@ -32,7 +32,7 @@ async function writeFile(table, { getFileName, printFile }) {
 		pathJoin(dirname, modelDirName, getFileName(table)),
 		csvStreamOpt
 	)
-	const data = printFile(t)
+	const data = printFile(table)
 	await tryWriteStreamEnd(ws, data)
 }
 
